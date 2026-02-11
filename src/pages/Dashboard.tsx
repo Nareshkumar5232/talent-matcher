@@ -1,8 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MatchScoreBadge } from '@/components/common/MatchScore';
-import { dashboardStats, recentActivity, candidates, processingActivityData } from '@/data/mockData';
 import { Users, FileText, UserCheck, Target, Clock, Upload, CheckCircle, XCircle, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -14,7 +14,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  BarChart,
+  Bar,
 } from 'recharts';
+import { getDashboardStats, getActivityStats, getCandidates } from '@/lib/api';
+import { Candidate, DashboardStats, ActivityItem } from '@/data/mockData';
 
 const activityIcons = {
   upload: Upload,
@@ -31,14 +35,41 @@ const activityColors = {
 };
 
 export default function Dashboard() {
-  const topCandidates = [...candidates]
-    .sort((a, b) => b.overallScore - a.overallScore)
-    .slice(0, 5);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [processingActivity, setProcessingActivity] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
+  const [topCandidates, setTopCandidates] = useState<Candidate[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsData, activityData, candidatesData] = await Promise.all([
+          getDashboardStats(),
+          getActivityStats(),
+          getCandidates()
+        ]);
+
+        setStats(statsData);
+        setProcessingActivity(activityData.processingActivityData);
+        setRecentActivity(activityData.recentActivity);
+
+        const sorted = candidatesData
+          .sort((a: Candidate, b: Candidate) => b.overallScore - a.overallScore)
+          .slice(0, 5);
+        setTopCandidates(sorted);
+      } catch (error) {
+        console.error("Failed to load dashboard data", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  if (!stats) return <div className="p-6">Loading dashboard...</div>;
 
   return (
     <div className="min-h-screen">
-      <Header 
-        title="Dashboard" 
+      <Header
+        title="Dashboard"
         subtitle="Overview of your recruitment pipeline"
       />
 
@@ -47,29 +78,29 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             title="Total Candidates"
-            value={dashboardStats.totalCandidates.toLocaleString()}
-            change={dashboardStats.weeklyChange.candidates}
+            value={stats.totalCandidates.toLocaleString()}
+            change={stats.weeklyChange.candidates}
             icon={Users}
             variant="blue"
           />
           <KPICard
             title="Resumes Processed"
-            value={dashboardStats.resumesProcessed.toLocaleString()}
-            change={dashboardStats.weeklyChange.processed}
+            value={stats.resumesProcessed.toLocaleString()}
+            change={stats.weeklyChange.processed}
             icon={FileText}
             variant="green"
           />
           <KPICard
             title="Shortlisted"
-            value={dashboardStats.shortlistedCandidates}
-            change={dashboardStats.weeklyChange.shortlisted}
+            value={stats.shortlistedCandidates}
+            change={stats.weeklyChange.shortlisted}
             icon={UserCheck}
             variant="orange"
           />
           <KPICard
             title="Avg. Skill Match"
-            value={`${dashboardStats.averageSkillMatch}%`}
-            change={dashboardStats.weeklyChange.skillMatch}
+            value={`${stats.averageSkillMatch}%`}
+            change={stats.weeklyChange.skillMatch}
             icon={Target}
             variant="purple"
           />
@@ -84,14 +115,14 @@ export default function Dashboard() {
             </h2>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={processingActivityData}>
+                <LineChart data={processingActivity}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="date" 
+                  <XAxis
+                    dataKey="date"
                     tick={{ fontSize: 12 }}
                     stroke="hsl(var(--muted-foreground))"
                   />
-                  <YAxis 
+                  <YAxis
                     tick={{ fontSize: 12 }}
                     stroke="hsl(var(--muted-foreground))"
                   />
@@ -139,10 +170,10 @@ export default function Dashboard() {
             </h2>
             <div className="space-y-4">
               {recentActivity.map((activity) => {
-                const Icon = activityIcons[activity.type];
+                const Icon = activityIcons[activity.type as keyof typeof activityIcons];
                 return (
                   <div key={activity.id} className="flex items-start gap-3">
-                    <div className={`mt-0.5 ${activityColors[activity.type]}`}>
+                    <div className={`mt-0.5 ${activityColors[activity.type as keyof typeof activityColors]}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">

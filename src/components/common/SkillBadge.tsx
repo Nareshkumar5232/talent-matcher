@@ -7,14 +7,14 @@ interface SkillBadgeProps {
 
 export function SkillBadge({ skill, variant = 'default' }: SkillBadgeProps) {
   const variantClasses = {
-    default: 'skill-tag',
+    default: '',
     required: 'skill-tag-required',
     matched: 'skill-tag-matched',
     missing: 'skill-tag-missing',
   };
 
   return (
-    <span className={variantClasses[variant]}>
+    <span className={cn('skill-tag', variantClasses[variant])}>
       {skill}
     </span>
   );

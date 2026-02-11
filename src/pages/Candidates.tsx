@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { StatusBadge } from '@/components/common/StatusBadge';
-import { MatchScoreBadge } from '@/components/common/MatchScore';
+import { MatchScoreBadge, SkillProgressBar } from '@/components/common/MatchScore';
 import { SkillList } from '@/components/common/SkillBadge';
-import { candidates, Candidate } from '@/data/mockData';
+import { Candidate } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -16,7 +16,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -35,17 +34,45 @@ import {
   GraduationCap,
   Briefcase,
 } from 'lucide-react';
-import { SkillProgressBar } from '@/components/common/MatchScore';
+import { getCandidates, updateCandidate } from '@/lib/api';
+import { toast } from 'sonner';
 
 type SortField = 'rank' | 'name' | 'skillMatch' | 'overallScore' | 'experience';
 type SortOrder = 'asc' | 'desc';
 
 export default function Candidates() {
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<SortField>('rank');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+
+  useEffect(() => {
+    loadCandidates();
+  }, []);
+
+  const loadCandidates = async () => {
+    try {
+      const data = await getCandidates();
+      setCandidates(data);
+    } catch (error) {
+      toast.error("Failed to load candidates");
+    }
+  };
+
+  const handleStatusUpdate = async (id: string, newStatus: string) => {
+    try {
+      await updateCandidate(id, { status: newStatus });
+      toast.success(`Candidate ${newStatus}`);
+      loadCandidates();
+      if (selectedCandidate) {
+        setSelectedCandidate(null);
+      }
+    } catch (error) {
+      toast.error("Failed to update status");
+    }
+  };
 
   const filteredCandidates = candidates
     .filter((candidate) => {
@@ -230,6 +257,7 @@ export default function Candidates() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-success hover:text-success"
+                          onClick={() => handleStatusUpdate(candidate.id, 'shortlisted')}
                         >
                           <CheckCircle className="h-4 w-4" />
                         </Button>
@@ -237,6 +265,7 @@ export default function Candidates() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleStatusUpdate(candidate.id, 'rejected')}
                         >
                           <XCircle className="h-4 w-4" />
                         </Button>
@@ -379,6 +408,7 @@ export default function Candidates() {
                   <Button
                     variant="outline"
                     className="flex-1 text-success border-success hover:bg-success/10"
+                    onClick={() => handleStatusUpdate(selectedCandidate.id, 'shortlisted')}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Shortlist
@@ -386,6 +416,7 @@ export default function Candidates() {
                   <Button
                     variant="outline"
                     className="flex-1 text-destructive border-destructive hover:bg-destructive/10"
+                    onClick={() => handleStatusUpdate(selectedCandidate.id, 'rejected')}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Reject

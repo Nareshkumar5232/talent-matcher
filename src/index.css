@@ -238,7 +238,7 @@
   }
 
   .skill-tag-required {
-    @apply bg-accent text-accent-foreground;
+    @apply bg-purple-600 text-white;
   }
 
   .skill-tag-matched {

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { SkillList } from '@/components/common/SkillBadge';
-import { jobDescriptions, JobDescription } from '@/data/mockData';
+import { JobDescription } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,9 +25,11 @@ import {
 } from '@/components/ui/select';
 import { Plus, Briefcase, MapPin, Users, Calendar, Pencil, Trash2, X } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { getJobs, createJob, updateJob, deleteJob } from '@/lib/api';
 
 export default function JobDescriptions() {
-  const [jobs, setJobs] = useState<JobDescription[]>(jobDescriptions);
+  const [jobs, setJobs] = useState<JobDescription[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobDescription | null>(null);
   const [skillInput, setSkillInput] = useState('');
@@ -42,6 +44,20 @@ export default function JobDescriptions() {
     education: '',
     description: '',
   });
+
+  useEffect(() => {
+    loadJobs();
+  }, []);
+
+  const loadJobs = async () => {
+    try {
+      const data = await getJobs();
+      setJobs(data);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to load jobs");
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -79,10 +95,10 @@ export default function JobDescriptions() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newJob: JobDescription = {
-      id: `job-${Date.now()}`,
+
+    const jobData: any = {
       title: formData.title,
       department: formData.department,
       location: formData.location,
@@ -94,13 +110,23 @@ export default function JobDescriptions() {
       },
       education: formData.education,
       description: formData.description,
-      createdAt: new Date().toISOString(),
       status: 'active',
-      candidateCount: 0,
     };
-    setJobs([newJob, ...jobs]);
-    setIsDialogOpen(false);
-    resetForm();
+
+    try {
+      if (selectedJob) {
+        await updateJob(selectedJob.id, jobData);
+        toast.success("Job updated successfully");
+      } else {
+        await createJob(jobData);
+        toast.success("Job created successfully");
+      }
+      loadJobs();
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      toast.error("Failed to save job");
+    }
   };
 
   const handleEdit = (job: JobDescription) => {
@@ -119,19 +145,29 @@ export default function JobDescriptions() {
     setIsDialogOpen(true);
   };
 
+  const handleDelete = async (jobId: string) => {
+    try {
+      await deleteJob(jobId);
+      setJobs(jobs.filter(job => job.id !== jobId));
+      toast.success("Job posting deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete job");
+    }
+  };
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-transparent">
       <Header
         title="Job Descriptions"
         subtitle="Manage job postings and requirements"
       />
 
-      <div className="p-6">
+      <div className="p-6 md:p-8 max-w-7xl mx-auto">
         {/* Actions Bar */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Select defaultValue="all">
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-48 h-10 bg-card border-input/60 shadow-sm">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -148,9 +184,9 @@ export default function JobDescriptions() {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button className="w-full sm:w-auto h-10 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all hover:translate-y-[1px]">
                 <Plus className="h-4 w-4 mr-2" />
-                Create Job
+                Create New Job
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -298,7 +334,7 @@ export default function JobDescriptions() {
                   }}>
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                  <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">
                     {selectedJob ? 'Update Job' : 'Create Job'}
                   </Button>
                 </DialogFooter>
@@ -308,65 +344,78 @@ export default function JobDescriptions() {
         </div>
 
         {/* Jobs Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {jobs.map((job) => (
             <div
               key={job.id}
-              className="bg-card rounded-lg border border-border p-5 hover:shadow-card-hover transition-shadow"
+              className="group bg-card rounded-xl border border-border/60 p-5 hover:shadow-lg hover:border-primary/20 transition-all duration-300 relative overflow-hidden"
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <Briefcase className="h-5 w-5 text-accent" />
+              <div className="absolute top-0 left-0 w-1 h-full bg-primary/0 group-hover:bg-primary/10 transition-colors"></div>
+
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <Briefcase className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">{job.title}</h3>
+                    <h3 className="font-bold text-lg text-foreground line-clamp-1">{job.title}</h3>
                     <p className="text-sm text-muted-foreground">{job.department}</p>
                   </div>
                 </div>
                 <StatusBadge status={job.status} />
               </div>
 
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
+              <div className="space-y-2.5 mb-5 pl-1">
+                <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4 text-primary/60" />
                   {job.location}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="h-4 w-4" />
-                  {job.candidateCount} candidates
+                <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4 text-primary/60" />
+                  {job.candidateCount} candidates applied
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  {format(new Date(job.createdAt), 'MMM d, yyyy')}
+                <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4 text-primary/60" />
+                  Posted {format(new Date(job.createdAt), 'MMM d, yyyy')}
                 </div>
               </div>
 
-              <div className="mb-4">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Required Skills</p>
-                <SkillList skills={job.requiredSkills} variant="required" maxVisible={4} />
+              <div className="mb-5">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">Required Skills</div>
+                <SkillList skills={job.requiredSkills} variant="required" maxVisible={3} />
               </div>
 
-              <div className="flex items-center gap-2 pt-3 border-t border-border">
+              <div className="flex items-center gap-3 pt-4 border-t border-border/60">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 hover:border-primary/50 hover:text-primary transition-colors"
                   onClick={() => handleEdit(job)}
                 >
-                  <Pencil className="h-4 w-4 mr-1" />
+                  <Pencil className="h-3.5 w-3.5 mr-2" />
                   Edit
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  className="px-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                  onClick={() => handleDelete(job.id)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           ))}
+
+          {jobs.length === 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+              <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Briefcase className="h-8 w-8 opacity-50" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">No jobs found</h3>
+              <p>Get started by creating a new job posting.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

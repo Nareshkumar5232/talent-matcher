@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Upload, FileText, X, CheckCircle, AlertCircle, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { uploadResume } from '@/lib/api';
+import { format } from 'date-fns';
 
 interface UploadedFile {
   id: string;
@@ -24,7 +26,7 @@ export default function ResumeUpload() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
-  const simulateUpload = (file: File) => {
+  const startUpload = async (file: File) => {
     const uploadId = `upload-${Date.now()}-${Math.random()}`;
     const newFile: UploadedFile = {
       id: uploadId,
@@ -36,48 +38,48 @@ export default function ResumeUpload() {
 
     setFiles((prev) => [newFile, ...prev]);
 
-    // Simulate upload progress
-    let progress = 0;
-    const uploadInterval = setInterval(() => {
-      progress += Math.random() * 20;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(uploadInterval);
-        
-        // Start processing simulation
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === uploadId ? { ...f, status: 'processing', progress: 100 } : f
-          )
-        );
-
-        // Simulate processing
-        setTimeout(() => {
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === uploadId
-                ? {
-                    ...f,
-                    status: 'completed',
-                    parsedData: {
-                      name: 'John Doe',
-                      email: 'john.doe@email.com',
-                      skills: ['React', 'TypeScript', 'Node.js', 'Python', 'SQL'],
-                      experience: '5 years',
-                    },
-                  }
-                : f
-            )
-          );
-        }, 1500);
-      } else {
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === uploadId ? { ...f, progress } : f
-          )
-        );
-      }
+    // Fake progress animation
+    const progressInterval = setInterval(() => {
+      setFiles((prev) => prev.map(f => {
+        if (f.id === uploadId && f.status === 'uploading') {
+          const nextProgress = f.progress + 10;
+          return { ...f, progress: nextProgress > 90 ? 90 : nextProgress };
+        }
+        return f;
+      }));
     }, 200);
+
+    try {
+      const response: any = await uploadResume(file);
+
+      clearInterval(progressInterval);
+
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === uploadId
+            ? {
+              ...f,
+              status: 'completed',
+              progress: 100,
+              parsedData: {
+                name: response.candidate.name,
+                email: response.candidate.email,
+                skills: response.candidate.skills,
+                experience: `${response.candidate.experience} years`
+              },
+            }
+            : f
+        )
+      );
+
+    } catch (error) {
+      clearInterval(progressInterval);
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === uploadId ? { ...f, status: 'error', progress: 0 } : f
+        )
+      );
+    }
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -90,12 +92,12 @@ export default function ResumeUpload() {
         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     );
 
-    droppedFiles.forEach((file) => simulateUpload(file));
+    droppedFiles.forEach((file) => startUpload(file));
   }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    selectedFiles.forEach((file) => simulateUpload(file));
+    selectedFiles.forEach((file) => startUpload(file));
   };
 
   const removeFile = (id: string) => {

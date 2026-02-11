@@ -1,5 +1,5 @@
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
-import { skillGapData, matchDistributionData, topMatchedSkillsData, candidates } from '@/data/mockData';
 import {
   BarChart,
   Bar,
@@ -13,8 +13,33 @@ import {
   Cell,
   Legend,
 } from 'recharts';
+import { getSkillsStats, getCandidates } from '@/lib/api';
+import { Candidate } from '@/data/mockData';
 
 export default function Analytics() {
+  const [skillGapData, setSkillGapData] = useState<any[]>([]);
+  const [matchDistributionData, setMatchDistributionData] = useState<any[]>([]);
+  const [topMatchedSkillsData, setTopMatchedSkillsData] = useState<any[]>([]);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [skillsStats, candidatesData] = await Promise.all([
+          getSkillsStats(),
+          getCandidates()
+        ]);
+        setSkillGapData(skillsStats.skillGapData);
+        setMatchDistributionData(skillsStats.matchDistributionData);
+        setTopMatchedSkillsData(skillsStats.topMatchedSkillsData);
+        setCandidates(candidatesData);
+      } catch (error) {
+        console.error("Failed to load analytics data", error);
+      }
+    };
+    fetchData();
+  }, []);
+
   // Calculate skill gap percentages
   const skillGapPercentages = skillGapData.map((item) => ({
     ...item,
@@ -23,6 +48,8 @@ export default function Analytics() {
   }));
 
   const COLORS = ['#16a34a', '#2563eb', '#f59e0b', '#dc2626', '#991b1b'];
+
+  if (candidates.length === 0) return <div className="p-6">Loading analytics...</div>;
 
   return (
     <div className="min-h-screen">
@@ -129,7 +156,7 @@ export default function Analytics() {
                     labelLine={false}
                   >
                     {matchDistributionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip
