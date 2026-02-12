@@ -10,8 +10,14 @@ app.use(cors());
 app.use(express.json());
 
 // Connect to MongoDB
+// Connect to MongoDB
 const connectDB = async () => {
     if (mongoose.connection.readyState >= 1) {
+        return;
+    }
+    // Check if MONGO_URI is defined to prevent crash
+    if (!process.env.MONGO_URI) {
+        console.warn('MONGO_URI environment variable not found. Running in offline/mock mode.');
         return;
     }
     try {
@@ -21,7 +27,7 @@ const connectDB = async () => {
         console.error('MongoDB connection error:', err);
     }
 };
-connectDB();
+connectDB().catch(err => console.error('Initial DB connection error:', err));
 
 // Routes
 // Routes
