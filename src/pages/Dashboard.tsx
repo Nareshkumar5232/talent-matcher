@@ -45,10 +45,12 @@ export default function Dashboard() {
   const [processingActivity, setProcessingActivity] = useState<any[]>([]);
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [topCandidates, setTopCandidates] = useState<Candidate[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setError(null);
         const [statsData, activityData, candidatesData] = await Promise.all([
           getDashboardStats(),
           getActivityStats(),
@@ -64,12 +66,28 @@ export default function Dashboard() {
           .sort((a: Candidate, b: Candidate) => b.overallScore - a.overallScore)
           .slice(0, 5);
         setTopCandidates(sorted);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to load dashboard data", error);
+        setError(error.message || "Failed to load dashboard data. Please make sure the backend server is running.");
       }
     };
     fetchData();
   }, []);
+
+  if (error) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[50vh] space-y-4">
+        <div className="text-destructive font-medium text-lg">Error loading dashboard</div>
+        <div className="text-muted-foreground">{error}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   if (!stats) return <div className="p-6">Loading dashboard...</div>;
 
