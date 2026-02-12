@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const Candidate = require('../models/Candidate');
-const Activity = require('../models/Activity');
+const Candidate = require('../models/Candidate.cjs');
+const Activity = require('../models/Activity.cjs');
 
 const getMockCandidates = () => ([
     { _id: '1', name: 'Demo Sarah', email: 'sarah@demo.com', status: 'shortlisted', skillMatch: 95, overallScore: 92, skills: ['React', 'Node'], experience: 5 },

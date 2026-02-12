@@ -42,10 +42,10 @@ const connectDB = async () => {
 // Routes - use path relative to api folder for Vercel
 let jobsRouter, candidatesRouter, statsRouter, uploadRouter;
 try {
-    jobsRouter = require('../backend/routes/jobs');
-    candidatesRouter = require('../backend/routes/candidates');
-    statsRouter = require('../backend/routes/stats');
-    uploadRouter = require('../backend/routes/upload');
+    jobsRouter = require('../backend/routes/jobs.cjs');
+    candidatesRouter = require('../backend/routes/candidates.cjs');
+    statsRouter = require('../backend/routes/stats.cjs');
+    uploadRouter = require('../backend/routes/upload.cjs');
 } catch (err) {
     console.error('Failed to load routes:', err);
 }

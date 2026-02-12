@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const Candidate = require('../models/Candidate');
-const Activity = require('../models/Activity');
-const Job = require('../models/Job');
+const Candidate = require('../models/Candidate.cjs');
+const Activity = require('../models/Activity.cjs');
+const Job = require('../models/Job.cjs');
 
 // Helper to get start of week
 const getStartOfWeek = () => {

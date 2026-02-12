@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const Candidate = require('../models/Candidate');
+const Candidate = require('../models/Candidate.cjs');
 const fs = require('fs');
 const os = require('os');
 
@@ -21,7 +21,7 @@ const upload = multer({
     }
 });
 
-const { parseResume } = require('../utils/resumeParser');
+const { parseResume } = require('../utils/resumeParser.cjs');
 
 // Upload and parse resume
 router.post('/', upload.single('resume'), async (req, res) => {
@@ -66,7 +66,7 @@ router.post('/', upload.single('resume'), async (req, res) => {
         await newCandidate.save();
 
         // Log activity
-        const Activity = require('../models/Activity');
+        const Activity = require('../models/Activity.cjs');
         await Activity.create({
             type: 'upload',
             candidateName: newCandidate.name,
