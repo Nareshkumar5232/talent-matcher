@@ -14,6 +14,7 @@ interface UploadedFile {
   size: number;
   status: 'uploading' | 'processing' | 'completed' | 'error';
   progress: number;
+  errorMessage?: string;
   parsedData?: {
     name: string;
     email: string;
@@ -72,11 +73,16 @@ export default function ResumeUpload() {
         )
       );
 
-    } catch (error) {
+    } catch (error: any) {
       clearInterval(progressInterval);
       setFiles((prev) =>
         prev.map((f) =>
-          f.id === uploadId ? { ...f, status: 'error', progress: 0 } : f
+          f.id === uploadId ? {
+            ...f,
+            status: 'error',
+            progress: 0,
+            errorMessage: error.message || 'Failed to process resume'
+          } : f
         )
       );
     }
@@ -92,12 +98,39 @@ export default function ResumeUpload() {
         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     );
 
+    // Warn if some files were skipped? For now just process valid ones as per original code, 
+    // but the user wants "if i uload other than resume it should show the error message"
+    // So if dropped files contain invalid ones, we should maybe show an error. 
+    // However, the requested logic "if i upload other than resume" implies an explicit attempt.
+
+    if (e.dataTransfer.files.length > droppedFiles.length) {
+      // Some files were filtered out
+      alert("Some files were skipped because they are not valid PDF or DOCX files.");
+    }
+
     droppedFiles.forEach((file) => startUpload(file));
   }, []);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
-    selectedFiles.forEach((file) => startUpload(file));
+
+    selectedFiles.forEach((file) => {
+      if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        startUpload(file);
+      } else {
+        // Add a file item that immediately shows error
+        const uploadId = `error-${Date.now()}-${Math.random()}`;
+        const errorFile: UploadedFile = {
+          id: uploadId,
+          name: file.name,
+          size: file.size,
+          status: 'error',
+          progress: 0,
+          errorMessage: 'Invalid file format. Only PDF and DOCX are allowed.'
+        };
+        setFiles((prev) => [errorFile, ...prev]);
+      }
+    });
   };
 
   const removeFile = (id: string) => {
@@ -251,7 +284,7 @@ export default function ResumeUpload() {
                       {file.status === 'error' && (
                         <div className="flex items-center gap-2 text-sm text-destructive">
                           <AlertCircle className="h-4 w-4" />
-                          Failed to process resume
+                          {file.errorMessage || 'Failed to process resume'}
                         </div>
                       )}
                     </div>

@@ -30,6 +30,8 @@ const upload = multer({
     }
 });
 
+const { parseResume } = require('../utils/resumeParser');
+
 // Upload and parse resume
 router.post('/', upload.single('resume'), async (req, res) => {
     try {
@@ -37,36 +39,48 @@ router.post('/', upload.single('resume'), async (req, res) => {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        // Simulate parsing logic
-        // In a real app, you would use a library like pdf-parse or mammoth to extract text
+        // Real parsing logic
+        const parsedData = await parseResume(req.file.path);
 
-        // Create a new candidate based on the uploaded file
-        // Random mock data just for demonstration since we don't have real parsing
+        if (!parsedData) {
+            return res.status(400).json({ message: 'Failed to extract text from resume' });
+        }
+
+        // Create a new candidate based on parsed data
         const newCandidate = new Candidate({
-            name: 'Parsed ' + req.file.originalname.split('.')[0],
-            email: `tbd-${Date.now()}@example.com`,
-            phone: '+1 (555) 000-0000',
-            location: 'Unknown',
-            experience: Math.floor(Math.random() * 10),
-            education: 'Bachelor\'s Degree',
-            skills: ['HTML', 'CSS', 'JavaScript'], // Default skills
-            resumeUrl: req.file.path,
+            name: parsedData.name || 'Unknown Candidate',
+            email: parsedData.email || `unknown-${Date.now()}@example.com`,
+            phone: parsedData.phone || 'N/A',
+            location: 'Unknown', // Location extraction is hard without NLP
+            experience: parsedData.experience || 0,
+            education: 'Bachelor\'s Degree', // Default if not found
+            skills: parsedData.skills.length > 0 ? parsedData.skills : ['General'],
+            resumeUrl: req.file.path.replace(/\\/g, '/'),
             status: 'new',
-            skillMatch: Math.floor(Math.random() * 100),
-            overallScore: Math.floor(Math.random() * 100),
+            skillMatch: 0, // Should be calculated against job description later
+            overallScore: 0,
             matchedSkills: [],
             missingSkills: [],
-            experienceMatch: Math.floor(Math.random() * 100),
-            educationMatch: Math.floor(Math.random() * 100),
-            summary: 'Automatically created from resume upload.',
+            experienceMatch: 0,
+            educationMatch: 0,
+            summary: parsedData.summary || 'Automatically created from resume upload.',
         });
 
         await newCandidate.save();
 
+        // Log activity
+        const Activity = require('../models/Activity');
+        await Activity.create({
+            type: 'upload',
+            candidateName: newCandidate.name,
+            jobTitle: 'General Application',
+            user: 'HR Admin'
+        });
+
         res.status(201).json({
             message: 'Resume uploaded and processed successfully',
             candidate: newCandidate,
-            // For immediate frontend display similar to simulation
+            // For immediate frontend display
             parsedData: {
                 name: newCandidate.name,
                 email: newCandidate.email,
@@ -76,7 +90,8 @@ router.post('/', upload.single('resume'), async (req, res) => {
         });
 
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('Upload error:', err);
+        res.status(500).json({ message: err.message || 'Server error during resume processing' });
     }
 });
 

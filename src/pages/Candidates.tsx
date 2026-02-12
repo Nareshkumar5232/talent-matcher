@@ -83,7 +83,9 @@ export default function Candidates() {
           skill.toLowerCase().includes(searchTerm.toLowerCase())
         );
       const matchesStatus =
-        statusFilter === 'all' || candidate.status === statusFilter;
+        statusFilter === 'all'
+          ? candidate.status !== 'rejected'
+          : candidate.status === statusFilter;
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
@@ -401,7 +403,20 @@ export default function Candidates() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-3 pt-4 border-t border-border">
-                  <Button variant="outline" className="flex-1">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      if (selectedCandidate.resumeUrl) {
+                        const url = selectedCandidate.resumeUrl.startsWith('/')
+                          ? selectedCandidate.resumeUrl
+                          : `/${selectedCandidate.resumeUrl}`;
+                        window.open(url, '_blank');
+                      } else {
+                        toast.error("Resume not available");
+                      }
+                    }}
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Download Resume
                   </Button>

@@ -10,6 +10,7 @@ import ResumeUpload from "./pages/ResumeUpload";
 import Candidates from "./pages/Candidates";
 import Analytics from "./pages/Analytics";
 import Login from "./pages/Login";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
@@ -39,6 +40,7 @@ const App = () => (
                 <Route path="/upload" element={<ResumeUpload />} />
                 <Route path="/candidates" element={<Candidates />} />
                 <Route path="/analytics" element={<Analytics />} />
+                <Route path="/settings" element={<Settings />} />
               </Route>
             </Route>
 

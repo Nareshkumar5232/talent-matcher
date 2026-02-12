@@ -1,9 +1,8 @@
-import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard,
-  FileText,
   Upload,
   Users,
   BarChart3,
@@ -33,6 +32,7 @@ const bottomNavItems = [
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
+  const { logout } = useAuth();
 
   return (
     <aside
@@ -113,6 +113,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           );
         })}
         <button
+          onClick={logout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all"
         >
           <LogOut className="h-5 w-5 flex-shrink-0" />

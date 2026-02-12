@@ -54,6 +54,7 @@ export default function Dashboard() {
         setRecentActivity(activityData.recentActivity);
 
         const sorted = candidatesData
+          .filter((c: Candidate) => c.status !== 'rejected')
           .sort((a: Candidate, b: Candidate) => b.overallScore - a.overallScore)
           .slice(0, 5);
         setTopCandidates(sorted);
