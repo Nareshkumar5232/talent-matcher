@@ -1,7 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-require('dotenv').config();
+const path = require('path');
+
+// dotenv only needed locally, Vercel injects env vars automatically
+try {
+    require('dotenv').config();
+} catch (e) {
+    // dotenv not available, that's fine on Vercel
+}
 
 const app = express();
 
@@ -33,28 +40,47 @@ const connectDB = async () => {
 };
 
 // Routes - use path relative to api folder for Vercel
-const jobsRouter = require('../backend/routes/jobs');
-const candidatesRouter = require('../backend/routes/candidates');
-const statsRouter = require('../backend/routes/stats');
-const uploadRouter = require('../backend/routes/upload');
+let jobsRouter, candidatesRouter, statsRouter, uploadRouter;
+try {
+    jobsRouter = require('../backend/routes/jobs');
+    candidatesRouter = require('../backend/routes/candidates');
+    statsRouter = require('../backend/routes/stats');
+    uploadRouter = require('../backend/routes/upload');
+} catch (err) {
+    console.error('Failed to load routes:', err);
+}
 
 // Ensure DB connects before handling requests
 app.use(async (req, res, next) => {
-    await connectDB();
+    try {
+        await connectDB();
+    } catch (err) {
+        console.error('DB connection middleware error:', err);
+    }
     next();
 });
 
-app.use('/api/jobs', jobsRouter);
-app.use('/api/candidates', candidatesRouter);
-app.use('/api/stats', statsRouter);
-app.use('/api/upload', uploadRouter);
+if (jobsRouter) app.use('/api/jobs', jobsRouter);
+if (candidatesRouter) app.use('/api/candidates', candidatesRouter);
+if (statsRouter) app.use('/api/stats', statsRouter);
+if (uploadRouter) app.use('/api/upload', uploadRouter);
 
 app.get('/api', (req, res) => {
-    res.json({ status: 'API is running' });
+    res.json({ 
+        status: 'API is running',
+        mongoUri: process.env.MONGO_URI ? 'configured' : 'not configured',
+        dbState: mongoose.connection.readyState
+    });
 });
 
 app.get('/', (req, res) => {
     res.json({ status: 'API is running' });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ error: err.message });
 });
 
 module.exports = app;
