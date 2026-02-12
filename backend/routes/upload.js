@@ -4,19 +4,10 @@ const multer = require('multer');
 const path = require('path');
 const Candidate = require('../models/Candidate');
 const fs = require('fs');
+const os = require('os');
 
 // Configure storage for file uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        if (!fs.existsSync('uploads')) {
-            fs.mkdirSync('uploads');
-        }
-        cb(null, 'uploads');
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname);
-    }
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
     storage: storage,
@@ -34,13 +25,19 @@ const { parseResume } = require('../utils/resumeParser');
 
 // Upload and parse resume
 router.post('/', upload.single('resume'), async (req, res) => {
+    let tempFilePath = null;
     try {
         if (!req.file) {
             return res.status(400).json({ message: 'No file uploaded' });
         }
 
+        // Write buffer to temp file for parsing
+        const tempDir = os.tmpdir();
+        tempFilePath = path.join(tempDir, `resume-${Date.now()}-${req.file.originalname}`);
+        fs.writeFileSync(tempFilePath, req.file.buffer);
+
         // Real parsing logic
-        const parsedData = await parseResume(req.file.path);
+        const parsedData = await parseResume(tempFilePath);
 
         if (!parsedData) {
             return res.status(400).json({ message: 'Failed to extract text from resume' });
@@ -55,7 +52,7 @@ router.post('/', upload.single('resume'), async (req, res) => {
             experience: parsedData.experience || 0,
             education: 'Bachelor\'s Degree', // Default if not found
             skills: parsedData.skills.length > 0 ? parsedData.skills : ['General'],
-            resumeUrl: req.file.path.replace(/\\/g, '/'),
+            resumeUrl: req.file.originalname, // File not persisted in serverless without blob storage
             status: 'new',
             skillMatch: 0, // Should be calculated against job description later
             overallScore: 0,
@@ -92,6 +89,11 @@ router.post('/', upload.single('resume'), async (req, res) => {
     } catch (err) {
         console.error('Upload error:', err);
         res.status(500).json({ message: err.message || 'Server error during resume processing' });
+    } finally {
+        // Clean up temp file
+        if (tempFilePath && fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+        }
     }
 });
 

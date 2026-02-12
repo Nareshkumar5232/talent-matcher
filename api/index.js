@@ -24,15 +24,16 @@ const connectDB = async () => {
 connectDB();
 
 // Routes
+// Routes
 const jobsRouter = require('../backend/routes/jobs');
 const candidatesRouter = require('../backend/routes/candidates');
 const statsRouter = require('../backend/routes/stats');
-// const uploadRouter = require('../backend/routes/upload'); // Require multer fix for serverless if used
+const uploadRouter = require('../backend/routes/upload');
 
 app.use('/api/jobs', jobsRouter);
 app.use('/api/candidates', candidatesRouter);
 app.use('/api/stats', statsRouter);
-// app.use('/api/upload', uploadRouter); // Commented out for now as multer might need specific Vercel handling
+app.use('/api/upload', uploadRouter);
 
 app.get('/', (req, res) => {
     res.send('API is running');
