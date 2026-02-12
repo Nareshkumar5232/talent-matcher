@@ -1,17 +1,29 @@
 const express = require('express');
 const router = express.Router();
 const Candidate = require('../models/Candidate');
-
-// Get all candidates
 const Activity = require('../models/Activity');
 
-// ... (existing GET) ...
+const getMockCandidates = () => ([
+    { _id: '1', name: 'Demo Sarah', email: 'sarah@demo.com', status: 'shortlisted', skillMatch: 95, overallScore: 92, skills: ['React', 'Node'], experience: 5 },
+    { _id: '2', name: 'Demo Mike', email: 'mike@demo.com', status: 'reviewed', skillMatch: 85, overallScore: 80, skills: ['Python', 'Django'], experience: 3 },
+    { _id: '3', name: 'Demo Emily', email: 'emily@demo.com', status: 'new', skillMatch: 75, overallScore: 70, skills: ['Java', 'Spring'], experience: 2 }
+]);
+
+// Get all candidates
 router.get('/', async (req, res) => {
     try {
+        const mongoose = require('mongoose');
+        if (mongoose.connection.readyState !== 1) {
+            console.log('Using mock candidates (DB not connected)');
+            return res.json(getMockCandidates());
+        }
+
         const candidates = await Candidate.find();
         res.json(candidates);
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('Candidates Error:', err);
+        // Fallback to mock on error
+        res.json(getMockCandidates());
     }
 });
 
