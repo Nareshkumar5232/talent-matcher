@@ -52,7 +52,7 @@ export interface DashboardStats {
 
 export interface ActivityItem {
   id: string;
-  type: 'upload' | 'shortlist' | 'reject' | 'review';
+  type: 'upload' | 'shortlist' | 'reject' | 'review' | 'create' | 'update' | 'delete';
   candidateName: string;
   jobTitle: string;
   timestamp: string;

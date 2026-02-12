@@ -3,7 +3,7 @@ import { Header } from '@/components/layout/Header';
 import { KPICard } from '@/components/dashboard/KPICard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MatchScoreBadge } from '@/components/common/MatchScore';
-import { Users, FileText, UserCheck, Target, Clock, Upload, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { Users, FileText, UserCheck, Target, Clock, Upload, CheckCircle, XCircle, Eye, PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   LineChart,
@@ -25,6 +25,9 @@ const activityIcons = {
   shortlist: CheckCircle,
   reject: XCircle,
   review: Eye,
+  create: PlusCircle,
+  update: Edit,
+  delete: Trash2,
 };
 
 const activityColors = {
@@ -32,6 +35,9 @@ const activityColors = {
   shortlist: 'text-success',
   reject: 'text-destructive',
   review: 'text-warning',
+  create: 'text-primary',
+  update: 'text-info',
+  delete: 'text-destructive',
 };
 
 export default function Dashboard() {
@@ -171,10 +177,13 @@ export default function Dashboard() {
             </h2>
             <div className="space-y-4">
               {recentActivity.map((activity) => {
-                const Icon = activityIcons[activity.type as keyof typeof activityIcons];
+                // Use type assertion and fallback to prevent crashes if a new type is added
+                const Icon = activityIcons[activity.type as keyof typeof activityIcons] || Clock;
+                const colorClass = activityColors[activity.type as keyof typeof activityColors] || 'text-muted-foreground';
+
                 return (
                   <div key={activity.id} className="flex items-start gap-3">
-                    <div className={`mt-0.5 ${activityColors[activity.type as keyof typeof activityColors]}`}>
+                    <div className={`mt-0.5 ${colorClass}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
