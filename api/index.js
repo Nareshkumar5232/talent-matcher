@@ -6,13 +6,16 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: true,
+    credentials: true
+}));
 app.use(express.json());
 
 // Connect to MongoDB
-// Connect to MongoDB
+let isConnected = false;
 const connectDB = async () => {
-    if (mongoose.connection.readyState >= 1) {
+    if (isConnected || mongoose.connection.readyState >= 1) {
         return;
     }
     // Check if MONGO_URI is defined to prevent crash
@@ -22,27 +25,36 @@ const connectDB = async () => {
     }
     try {
         await mongoose.connect(process.env.MONGO_URI);
+        isConnected = true;
         console.log('MongoDB Connected');
     } catch (err) {
         console.error('MongoDB connection error:', err);
     }
 };
-connectDB().catch(err => console.error('Initial DB connection error:', err));
 
-// Routes
-// Routes
+// Routes - use path relative to api folder for Vercel
 const jobsRouter = require('../backend/routes/jobs');
 const candidatesRouter = require('../backend/routes/candidates');
 const statsRouter = require('../backend/routes/stats');
 const uploadRouter = require('../backend/routes/upload');
+
+// Ensure DB connects before handling requests
+app.use(async (req, res, next) => {
+    await connectDB();
+    next();
+});
 
 app.use('/api/jobs', jobsRouter);
 app.use('/api/candidates', candidatesRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/upload', uploadRouter);
 
+app.get('/api', (req, res) => {
+    res.json({ status: 'API is running' });
+});
+
 app.get('/', (req, res) => {
-    res.send('API is running');
+    res.json({ status: 'API is running' });
 });
 
 module.exports = app;
