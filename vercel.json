@@ -6,7 +6,8 @@
     "functions": {
         "api/index.cjs": {
             "runtime": "nodejs20.x",
-            "includeFiles": "backend/**"
+            "includeFiles": "backend/**",
+            "maxDuration": 60
         }
     },
     "routes": [

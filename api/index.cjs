@@ -31,11 +31,17 @@ const connectDB = async () => {
         return;
     }
     try {
-        await mongoose.connect(process.env.MONGO_URL);
+        await mongoose.connect(process.env.MONGO_URL, {
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 45000,
+            bufferCommands: true,
+            maxPoolSize: 10,
+        });
         isConnected = true;
         console.log('MongoDB Connected');
     } catch (err) {
         console.error('MongoDB connection error:', err);
+        throw err;
     }
 };
 
