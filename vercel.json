@@ -2,15 +2,24 @@
     "version": 2,
     "buildCommand": "npm run build",
     "outputDirectory": "dist",
+    "framework": null,
     "functions": {
         "api/index.cjs": {
+            "runtime": "nodejs20.x",
             "includeFiles": "backend/**"
         }
     },
-    "rewrites": [
+    "routes": [
         {
-            "source": "/api/:path*",
-            "destination": "/api/index.cjs"
+            "src": "/api/(.*)",
+            "dest": "/api/index.cjs"
+        },
+        {
+            "handle": "filesystem"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/index.html"
         }
     ]
 }

@@ -16,10 +16,10 @@ mongoose.connect(process.env.MONGO_URI)
     .catch(err => console.error(err));
 
 // Routes
-const jobsRouter = require('./routes/jobs');
-const candidatesRouter = require('./routes/candidates');
-const statsRouter = require('./routes/stats');
-const uploadRouter = require('./routes/upload');
+const jobsRouter = require('./routes/jobs.cjs');
+const candidatesRouter = require('./routes/candidates.cjs');
+const statsRouter = require('./routes/stats.cjs');
+const uploadRouter = require('./routes/upload.cjs');
 
 app.use('/api/jobs', jobsRouter);
 app.use('/api/candidates', candidatesRouter);
