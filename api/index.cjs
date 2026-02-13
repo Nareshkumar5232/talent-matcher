@@ -25,13 +25,13 @@ const connectDB = async () => {
     if (isConnected || mongoose.connection.readyState >= 1) {
         return;
     }
-    // Check if MONGO_URI is defined to prevent crash
-    if (!process.env.MONGO_URI) {
-        console.warn('MONGO_URI environment variable not found. Running in offline/mock mode.');
+    // Check if MONGO_URL is defined to prevent crash
+    if (!process.env.MONGO_URL) {
+        console.warn('MONGO_URL environment variable not found. Running in offline/mock mode.');
         return;
     }
     try {
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGO_URL);
         isConnected = true;
         console.log('MongoDB Connected');
     } catch (err) {
@@ -68,7 +68,7 @@ if (uploadRouter) app.use('/api/upload', uploadRouter);
 app.get('/api', (req, res) => {
     res.json({ 
         status: 'API is running',
-        mongoUri: process.env.MONGO_URI ? 'configured' : 'not configured',
+        mongoUrl: process.env.MONGO_URL ? 'configured' : 'not configured',
         dbState: mongoose.connection.readyState
     });
 });
