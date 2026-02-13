@@ -75,8 +75,27 @@ app.get('/api', (req, res) => {
     res.json({ 
         status: 'API is running',
         mongoUri: process.env.MONGO_URL ? 'configured' : 'not configured',
-        dbState: mongoose.connection.readyState
+        dbState: mongoose.connection.readyState,
+        dbStateText: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState] || 'unknown'
     });
+});
+
+// Debug endpoint to test DB connection
+app.get('/api/debug', async (req, res) => {
+    try {
+        await connectDB();
+        res.json({
+            mongoConfigured: !!process.env.MONGO_URL,
+            connectionState: mongoose.connection.readyState,
+            connectionStateText: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState] || 'unknown',
+            host: mongoose.connection.host || 'not connected'
+        });
+    } catch (err) {
+        res.status(500).json({
+            error: err.message,
+            mongoConfigured: !!process.env.MONGO_URL
+        });
+    }
 });
 
 app.get('/', (req, res) => {
