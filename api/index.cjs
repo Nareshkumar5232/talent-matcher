@@ -19,30 +19,42 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Connect to MongoDB
-let isConnected = false;
+// MongoDB connection with proper serverless handling
+let cached = global.mongoose;
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
+
 const connectDB = async () => {
-    if (isConnected || mongoose.connection.readyState >= 1) {
-        return;
+    if (cached.conn) {
+        return cached.conn;
     }
-// Check if MONGO_URL is defined to prevent crash
+
     if (!process.env.MONGO_URL) {
-        console.warn('MONGO_URL environment variable not found. Running in offline/mock mode.');
-        return;
+        throw new Error('MONGO_URL environment variable not found');
     }
-    try {
-        await mongoose.connect(process.env.MONGO_URL, {
-            serverSelectionTimeoutMS: 30000,
+
+    if (!cached.promise) {
+        const opts = {
+            bufferCommands: false,
+            serverSelectionTimeoutMS: 10000,
             socketTimeoutMS: 45000,
-            bufferCommands: true,
-            maxPoolSize: 10,
+        };
+
+        cached.promise = mongoose.connect(process.env.MONGO_URL, opts).then((mongoose) => {
+            console.log('MongoDB Connected');
+            return mongoose;
         });
-        isConnected = true;
-        console.log('MongoDB Connected');
-    } catch (err) {
-        console.error('MongoDB connection error:', err);
-        throw err;
     }
+
+    try {
+        cached.conn = await cached.promise;
+    } catch (e) {
+        cached.promise = null;
+        throw e;
+    }
+
+    return cached.conn;
 };
 
 // Routes - use path relative to api folder for Vercel
@@ -58,12 +70,20 @@ try {
 
 // Ensure DB connects before handling requests
 app.use(async (req, res, next) => {
+    // Skip DB connection for health check endpoints
+    if (req.path === '/api' || req.path === '/') {
+        return next();
+    }
     try {
         await connectDB();
+        next();
     } catch (err) {
-        console.error('DB connection middleware error:', err);
+        console.error('DB connection error:', err);
+        return res.status(503).json({ 
+            error: 'Database connection failed', 
+            message: err.message 
+        });
     }
-    next();
 });
 
 if (jobsRouter) app.use('/api/jobs', jobsRouter);
