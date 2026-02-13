@@ -25,7 +25,7 @@ const connectDB = async () => {
     if (isConnected || mongoose.connection.readyState >= 1) {
         return;
     }
-    // Check if MONGO_URL is defined to prevent crash
+// Check if MONGO_URL is defined to prevent crash
     if (!process.env.MONGO_URL) {
         console.warn('MONGO_URL environment variable not found. Running in offline/mock mode.');
         return;
@@ -68,7 +68,7 @@ if (uploadRouter) app.use('/api/upload', uploadRouter);
 app.get('/api', (req, res) => {
     res.json({ 
         status: 'API is running',
-        mongoUrl: process.env.MONGO_URL ? 'configured' : 'not configured',
+        mongoUri: process.env.MONGO_URL ? 'configured' : 'not configured',
         dbState: mongoose.connection.readyState
     });
 });
