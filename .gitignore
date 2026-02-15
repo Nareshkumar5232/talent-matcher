@@ -24,3 +24,12 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
+
+# Environment files
+.env
+backend/.env
+
+# Firebase service account keys (sensitive!)
+**/serviceAccountKey.json
+**/serviceAccountKey*.json
+**/firebase-*.json

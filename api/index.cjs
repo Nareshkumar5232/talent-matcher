@@ -1,5 +1,4 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 
@@ -10,6 +9,9 @@ try {
     // dotenv not available, that's fine on Vercel
 }
 
+// Initialize Firebase
+const { initializeFirebase, getFirestore } = require('../backend/config/firebase.cjs');
+
 const app = express();
 
 // Middleware
@@ -19,42 +21,24 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// MongoDB connection with proper serverless handling
-let cached = global.mongoose;
-if (!cached) {
-    cached = global.mongoose = { conn: null, promise: null };
-}
+// Firebase initialization status
+let firebaseInitialized = false;
+let firebaseError = null;
 
-const connectDB = async () => {
-    if (cached.conn) {
-        return cached.conn;
-    }
-
-    if (!process.env.MONGO_URL) {
-        throw new Error('MONGO_URL environment variable not found');
-    }
-
-    if (!cached.promise) {
-        const opts = {
-            bufferCommands: false,
-            serverSelectionTimeoutMS: 10000,
-            socketTimeoutMS: 45000,
-        };
-
-        cached.promise = mongoose.connect(process.env.MONGO_URL, opts).then((mongoose) => {
-            console.log('MongoDB Connected');
-            return mongoose;
-        });
-    }
-
+// Initialize Firebase on startup
+const initFirebase = () => {
+    if (firebaseInitialized) return true;
+    
     try {
-        cached.conn = await cached.promise;
-    } catch (e) {
-        cached.promise = null;
-        throw e;
+        initializeFirebase();
+        firebaseInitialized = true;
+        console.log('Firebase initialized successfully');
+        return true;
+    } catch (err) {
+        firebaseError = err.message;
+        console.error('Firebase initialization failed:', err.message);
+        return false;
     }
-
-    return cached.conn;
 };
 
 // Routes - use path relative to api folder for Vercel
@@ -68,22 +52,21 @@ try {
     console.error('Failed to load routes:', err);
 }
 
-// Ensure DB connects before handling requests
+// Ensure Firebase initializes before handling requests
 app.use(async (req, res, next) => {
-    // Skip DB connection for health check endpoints
+    // Skip Firebase check for health check endpoints
     if (req.path === '/api' || req.path === '/') {
         return next();
     }
-    try {
-        await connectDB();
-        next();
-    } catch (err) {
-        console.error('DB connection error:', err);
+    
+    if (!initFirebase()) {
         return res.status(503).json({ 
             error: 'Database connection failed', 
-            message: err.message 
+            message: firebaseError || 'Firebase not configured'
         });
     }
+    
+    next();
 });
 
 if (jobsRouter) app.use('/api/jobs', jobsRouter);
@@ -92,28 +75,43 @@ if (statsRouter) app.use('/api/stats', statsRouter);
 if (uploadRouter) app.use('/api/upload', uploadRouter);
 
 app.get('/api', (req, res) => {
+    const isConfigured = !!(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_PROJECT_ID);
     res.json({ 
         status: 'API is running',
-        mongoUri: process.env.MONGO_URL ? 'configured' : 'not configured',
-        dbState: mongoose.connection.readyState,
-        dbStateText: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState] || 'unknown'
+        database: 'Firebase Firestore',
+        firebaseConfigured: isConfigured,
+        firebaseInitialized: firebaseInitialized,
+        error: firebaseError
     });
 });
 
-// Debug endpoint to test DB connection
+// Debug endpoint to test Firebase connection
 app.get('/api/debug', async (req, res) => {
     try {
-        await connectDB();
-        res.json({
-            mongoConfigured: !!process.env.MONGO_URL,
-            connectionState: mongoose.connection.readyState,
-            connectionStateText: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState] || 'unknown',
-            host: mongoose.connection.host || 'not connected'
-        });
+        const isConfigured = !!(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_PROJECT_ID);
+        
+        if (initFirebase()) {
+            // Try a simple Firestore operation to verify connection
+            const db = getFirestore();
+            const testRef = db.collection('_health_check');
+            
+            res.json({
+                firebaseConfigured: isConfigured,
+                firebaseInitialized: true,
+                status: 'connected',
+                projectId: process.env.FIREBASE_PROJECT_ID || 'from service account'
+            });
+        } else {
+            res.status(500).json({
+                firebaseConfigured: isConfigured,
+                firebaseInitialized: false,
+                error: firebaseError
+            });
+        }
     } catch (err) {
         res.status(500).json({
             error: err.message,
-            mongoConfigured: !!process.env.MONGO_URL
+            firebaseConfigured: !!(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_PROJECT_ID)
         });
     }
 });

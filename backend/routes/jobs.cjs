@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const Job = require('../models/Job.cjs');
+const JobService = require('../services/JobService.cjs');
 
 // Get all jobs
 router.get('/', async (req, res) => {
     try {
-        const jobs = await Job.find();
+        const jobs = await JobService.findAll();
         res.json(jobs);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -14,9 +14,8 @@ router.get('/', async (req, res) => {
 
 // Create a job
 router.post('/', async (req, res) => {
-    const job = new Job(req.body);
     try {
-        const newJob = await job.save();
+        const newJob = await JobService.create(req.body);
         res.status(201).json(newJob);
     } catch (err) {
         res.status(400).json({ message: err.message });
@@ -26,7 +25,7 @@ router.post('/', async (req, res) => {
 // Update a job
 router.put('/:id', async (req, res) => {
     try {
-        const job = await Job.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const job = await JobService.findByIdAndUpdate(req.params.id, req.body);
         res.json(job);
     } catch (err) {
         res.status(400).json({ message: err.message });
@@ -36,7 +35,7 @@ router.put('/:id', async (req, res) => {
 // Delete a job
 router.delete('/:id', async (req, res) => {
     try {
-        await Job.findByIdAndDelete(req.params.id);
+        await JobService.findByIdAndDelete(req.params.id);
         res.json({ message: 'Job deleted' });
     } catch (err) {
         res.status(500).json({ message: err.message });

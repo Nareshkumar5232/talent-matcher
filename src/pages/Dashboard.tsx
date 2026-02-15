@@ -4,7 +4,7 @@ import { KPICard } from '@/components/dashboard/KPICard';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { MatchScoreBadge } from '@/components/common/MatchScore';
 import { Users, FileText, UserCheck, Target, Clock, Upload, CheckCircle, XCircle, Eye, PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/utils';
 import {
   LineChart,
   Line,
@@ -214,7 +214,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-1 mt-1">
                         <Clock className="h-3 w-3 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(activity.timestamp), 'MMM d, h:mm a')}
+                          {formatDate(activity.timestamp, 'MMM d, h:mm a')}
                         </span>
                       </div>
                     </div>

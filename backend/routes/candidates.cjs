@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const Candidate = require('../models/Candidate.cjs');
-const Activity = require('../models/Activity.cjs');
+const CandidateService = require('../services/CandidateService.cjs');
+const ActivityService = require('../services/ActivityService.cjs');
 
 const getMockCandidates = () => ([
     { _id: '1', name: 'Demo Sarah', email: 'sarah@demo.com', status: 'shortlisted', skillMatch: 95, overallScore: 92, skills: ['React', 'Node'], experience: 5 },
@@ -12,13 +12,7 @@ const getMockCandidates = () => ([
 // Get all candidates
 router.get('/', async (req, res) => {
     try {
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState !== 1) {
-            console.log('Using mock candidates (DB not connected)');
-            return res.json(getMockCandidates());
-        }
-
-        const candidates = await Candidate.find();
+        const candidates = await CandidateService.findAll();
         res.json(candidates);
     } catch (err) {
         console.error('Candidates Error:', err);
@@ -29,13 +23,12 @@ router.get('/', async (req, res) => {
 
 // Create a candidate
 router.post('/', async (req, res) => {
-    const candidate = new Candidate(req.body);
     try {
-        const newCandidate = await candidate.save();
-        await Activity.create({
+        const newCandidate = await CandidateService.create(req.body);
+        await ActivityService.create({
             type: 'create',
             candidateName: newCandidate.name,
-            jobTitle: 'General Application', // Or specific job from req.body
+            jobTitle: 'General Application',
             user: 'HR Admin'
         });
         res.status(201).json(newCandidate);
@@ -48,8 +41,8 @@ router.post('/', async (req, res) => {
 // Update candidate
 router.put('/:id', async (req, res) => {
     try {
-        const oldCandidate = await Candidate.findById(req.params.id);
-        const candidate = await Candidate.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const oldCandidate = await CandidateService.findById(req.params.id);
+        const candidate = await CandidateService.findByIdAndUpdate(req.params.id, req.body);
 
         // Log status changes
         if (oldCandidate && req.body.status && req.body.status !== oldCandidate.status) {
@@ -57,7 +50,7 @@ router.put('/:id', async (req, res) => {
                 req.body.status === 'rejected' ? 'reject' :
                     req.body.status === 'reviewed' ? 'review' : 'update';
 
-            await Activity.create({
+            await ActivityService.create({
                 type: type,
                 candidateName: candidate.name,
                 jobTitle: 'General Application',
@@ -74,16 +67,16 @@ router.put('/:id', async (req, res) => {
 // Delete candidate
 router.delete('/:id', async (req, res) => {
     try {
-        const candidate = await Candidate.findById(req.params.id);
+        const candidate = await CandidateService.findById(req.params.id);
         if (candidate) {
-            await Activity.create({
+            await ActivityService.create({
                 type: 'delete',
                 candidateName: candidate.name,
                 jobTitle: 'General Application',
                 user: 'HR Admin'
             });
         }
-        await Candidate.findByIdAndDelete(req.params.id);
+        await CandidateService.findByIdAndDelete(req.params.id);
         res.json({ message: 'Candidate deleted' });
     } catch (err) {
         res.status(500).json({ message: err.message });

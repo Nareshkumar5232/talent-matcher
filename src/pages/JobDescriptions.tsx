@@ -24,7 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Briefcase, MapPin, Users, Calendar, Pencil, Trash2, X } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatDate } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getJobs, createJob, updateJob, deleteJob } from '@/lib/api';
 
@@ -376,7 +376,7 @@ export default function JobDescriptions() {
                 </div>
                 <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                   <Calendar className="h-4 w-4 text-primary/60" />
-                  Posted {format(new Date(job.createdAt), 'MMM d, yyyy')}
+                  Posted {formatDate(job.createdAt, 'MMM d, yyyy')}
                 </div>
               </div>
 

@@ -1,6 +1,25 @@
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-const mapId = (item: any) => ({ ...item, id: item._id || item.id });
+// Convert Firestore timestamp to Date
+const convertTimestamp = (timestamp: any): Date | null => {
+    if (!timestamp) return null;
+    if (timestamp instanceof Date) return timestamp;
+    if (timestamp._seconds) return new Date(timestamp._seconds * 1000);
+    if (typeof timestamp === 'string') return new Date(timestamp);
+    return null;
+};
+
+// Process item to convert timestamps and map IDs
+const processItem = (item: any) => ({
+    ...item,
+    id: item._id || item.id,
+    appliedDate: convertTimestamp(item.appliedDate),
+    createdAt: convertTimestamp(item.createdAt),
+    updatedAt: convertTimestamp(item.updatedAt),
+    timestamp: convertTimestamp(item.timestamp),
+});
+
+const mapId = (item: any) => processItem(item);
 
 export const getJobs = async () => {
     const res = await fetch(`${API_URL}/jobs`);
@@ -81,7 +100,17 @@ export const getDashboardStats = async () => {
 export const getActivityStats = async () => {
     const res = await fetch(`${API_URL}/stats/activity`);
     if (!res.ok) throw new Error('Failed to fetch activity stats');
-    return res.json();
+    const data = await res.json();
+    // Convert timestamps in recent activity
+    if (data.recentActivity) {
+        data.recentActivity = data.recentActivity.map((activity: any) => ({
+            ...activity,
+            timestamp: activity.timestamp?._seconds 
+                ? new Date(activity.timestamp._seconds * 1000) 
+                : new Date(activity.timestamp)
+        }));
+    }
+    return data;
 };
 
 export const getSkillsStats = async () => {

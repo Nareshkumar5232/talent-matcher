@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const Candidate = require('../models/Candidate.cjs');
-const Activity = require('../models/Activity.cjs');
-const Job = require('../models/Job.cjs');
+const CandidateService = require('../services/CandidateService.cjs');
+const ActivityService = require('../services/ActivityService.cjs');
+const JobService = require('../services/JobService.cjs');
 
 // Helper to get start of week
 const getStartOfWeek = () => {
@@ -69,35 +69,52 @@ const getMockSkills = () => ({
 // Get Dashboard Stats
 router.get('/dashboard', async (req, res) => {
     try {
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState !== 1) {
-            console.log('Using mock stats (DB not connected)');
-            return res.json(getMockStats());
-        }
-
-        const totalCandidates = await Candidate.countDocuments();
-        const resumesProcessed = await Candidate.countDocuments({ status: { $in: ['reviewed', 'shortlisted', 'rejected'] } });
-        const shortlistedCandidates = await Candidate.countDocuments({ status: 'shortlisted' });
+        const candidates = await CandidateService.findAll();
+        const totalCandidates = candidates.length;
+        
+        const resumesProcessed = candidates.filter(c => 
+            ['reviewed', 'shortlisted', 'rejected'].includes(c.status)
+        ).length;
+        
+        const shortlistedCandidates = candidates.filter(c => c.status === 'shortlisted').length;
 
         // Average skill match
-        const result = await Candidate.aggregate([
-            { $group: { _id: null, avgSkillMatch: { $avg: '$skillMatch' } } }
-        ]);
-        const averageSkillMatch = result.length > 0 ? Math.round(result[0].avgSkillMatch) : 0;
+        const averageSkillMatch = candidates.length > 0 
+            ? Math.round(candidates.reduce((sum, c) => sum + (c.skillMatch || 0), 0) / candidates.length)
+            : 0;
 
         // Calculate Weekly Changes (This week vs Last week)
         const now = new Date();
         const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-        const newCandidatesThisWeek = await Candidate.countDocuments({ appliedDate: { $gte: oneWeekAgo } });
-        const newCandidatesLastWeek = await Candidate.countDocuments({ appliedDate: { $gte: twoWeeksAgo, $lt: oneWeekAgo } });
+        const newCandidatesThisWeek = candidates.filter(c => {
+            const appliedDate = c.appliedDate?.toDate ? c.appliedDate.toDate() : new Date(c.appliedDate);
+            return appliedDate >= oneWeekAgo;
+        }).length;
 
-        const processedThisWeek = await Activity.countDocuments({ timestamp: { $gte: oneWeekAgo }, type: { $in: ['review', 'shortlist', 'reject'] } });
-        const processedLastWeek = await Activity.countDocuments({ timestamp: { $gte: twoWeeksAgo, $lt: oneWeekAgo }, type: { $in: ['review', 'shortlist', 'reject'] } });
+        const newCandidatesLastWeek = candidates.filter(c => {
+            const appliedDate = c.appliedDate?.toDate ? c.appliedDate.toDate() : new Date(c.appliedDate);
+            return appliedDate >= twoWeeksAgo && appliedDate < oneWeekAgo;
+        }).length;
 
-        const shortlistedThisWeek = await Activity.countDocuments({ timestamp: { $gte: oneWeekAgo }, type: 'shortlist' });
-        const shortlistedLastWeek = await Activity.countDocuments({ timestamp: { $gte: twoWeeksAgo, $lt: oneWeekAgo }, type: 'shortlist' });
+        const processedThisWeek = await ActivityService.countDocuments({ 
+            timestamp: { $gte: oneWeekAgo }, 
+            type: { $in: ['review', 'shortlist', 'reject'] } 
+        });
+        const processedLastWeek = await ActivityService.countDocuments({ 
+            timestamp: { $gte: twoWeeksAgo, $lt: oneWeekAgo }, 
+            type: { $in: ['review', 'shortlist', 'reject'] } 
+        });
+
+        const shortlistedThisWeek = await ActivityService.countDocuments({ 
+            timestamp: { $gte: oneWeekAgo }, 
+            type: 'shortlist' 
+        });
+        const shortlistedLastWeek = await ActivityService.countDocuments({ 
+            timestamp: { $gte: twoWeeksAgo, $lt: oneWeekAgo }, 
+            type: 'shortlist' 
+        });
 
         res.json({
             totalCandidates,
@@ -121,16 +138,8 @@ router.get('/dashboard', async (req, res) => {
 // Get Activity Data
 router.get('/activity', async (req, res) => {
     try {
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState !== 1) {
-            return res.json(getMockActivity());
-        }
-
         // Recent activity feed
-        const recentActivity = await Activity.find()
-            .sort({ timestamp: -1 })
-            .limit(10)
-            .lean();
+        const recentActivity = await ActivityService.findWithOptions({ limit: 10 });
 
         // Map _id to id for frontend
         const mappedRecent = recentActivity.map(a => ({
@@ -138,7 +147,7 @@ router.get('/activity', async (req, res) => {
             type: a.type,
             candidateName: a.candidateName,
             jobTitle: a.jobTitle,
-            timestamp: a.timestamp,
+            timestamp: a.timestamp?.toDate ? a.timestamp.toDate() : a.timestamp,
             user: a.user
         }));
 
@@ -150,11 +159,18 @@ router.get('/activity', async (req, res) => {
             const startOfDay = new Date(date.setHours(0, 0, 0, 0));
             const endOfDay = new Date(date.setHours(23, 59, 59, 999));
 
-            // We need to count by day. This is a bit expensive in a loop but fine for small scale.
-            // Better to use aggregate in production.
-            const uploads = await Activity.countDocuments({ type: 'upload', timestamp: { $gte: startOfDay, $lte: endOfDay } });
-            const processed = await Activity.countDocuments({ type: { $in: ['review', 'shortlist', 'reject'] }, timestamp: { $gte: startOfDay, $lte: endOfDay } });
-            const shortlisted = await Activity.countDocuments({ type: 'shortlist', timestamp: { $gte: startOfDay, $lte: endOfDay } });
+            const uploads = await ActivityService.countDocuments({ 
+                type: 'upload', 
+                timestamp: { $gte: startOfDay, $lte: endOfDay } 
+            });
+            const processed = await ActivityService.countDocuments({ 
+                type: { $in: ['review', 'shortlist', 'reject'] }, 
+                timestamp: { $gte: startOfDay, $lte: endOfDay } 
+            });
+            const shortlisted = await ActivityService.countDocuments({ 
+                type: 'shortlist', 
+                timestamp: { $gte: startOfDay, $lte: endOfDay } 
+            });
 
             processingActivityData.push({
                 date: startOfDay.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -174,12 +190,7 @@ router.get('/activity', async (req, res) => {
 // Get Skills Data
 router.get('/skills', async (req, res) => {
     try {
-        const mongoose = require('mongoose');
-        if (mongoose.connection.readyState !== 1) {
-            return res.json(getMockSkills());
-        }
-
-        const candidates = await Candidate.find();
+        const candidates = await CandidateService.findAll();
 
         // 1. Calculate Skill Matches (Gap Analysis)
         // Since we don't have a "Required Skills" source of truth easily available without a specific Job reference,

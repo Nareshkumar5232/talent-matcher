@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { SkillList } from '@/components/common/SkillBadge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ interface UploadedFile {
   status: 'uploading' | 'processing' | 'completed' | 'error';
   progress: number;
   errorMessage?: string;
+  candidateId?: string;
   parsedData?: {
     name: string;
     email: string;
@@ -26,6 +28,7 @@ interface UploadedFile {
 export default function ResumeUpload() {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const navigate = useNavigate();
 
   const startUpload = async (file: File) => {
     const uploadId = `upload-${Date.now()}-${Math.random()}`;
@@ -62,6 +65,7 @@ export default function ResumeUpload() {
               ...f,
               status: 'completed',
               progress: 100,
+              candidateId: response.candidate.id,
               parsedData: {
                 name: response.candidate.name,
                 email: response.candidate.email,
@@ -88,24 +92,23 @@ export default function ResumeUpload() {
     }
   };
 
+  const SUPPORTED_TYPES = [
+    'image/png',
+    'image/jpeg',
+    'image/jpg'
+  ];
+
+  const isValidFileType = (file: File) => SUPPORTED_TYPES.includes(file.type);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
 
-    const droppedFiles = Array.from(e.dataTransfer.files).filter(
-      (file) =>
-        file.type === 'application/pdf' ||
-        file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    );
-
-    // Warn if some files were skipped? For now just process valid ones as per original code, 
-    // but the user wants "if i uload other than resume it should show the error message"
-    // So if dropped files contain invalid ones, we should maybe show an error. 
-    // However, the requested logic "if i upload other than resume" implies an explicit attempt.
+    const droppedFiles = Array.from(e.dataTransfer.files).filter(isValidFileType);
 
     if (e.dataTransfer.files.length > droppedFiles.length) {
       // Some files were filtered out
-      alert("Some files were skipped because they are not valid PDF or DOCX files.");
+      alert("Some files were skipped because they are not valid image files (PNG, JPG).");
     }
 
     droppedFiles.forEach((file) => startUpload(file));
@@ -115,7 +118,7 @@ export default function ResumeUpload() {
     const selectedFiles = Array.from(e.target.files || []);
 
     selectedFiles.forEach((file) => {
-      if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      if (isValidFileType(file)) {
         startUpload(file);
       } else {
         // Add a file item that immediately shows error
@@ -126,7 +129,7 @@ export default function ResumeUpload() {
           size: file.size,
           status: 'error',
           progress: 0,
-          errorMessage: 'Invalid file format. Only PDF and DOCX are allowed.'
+          errorMessage: 'Invalid file format. Only image files (PNG, JPG) are allowed.'
         };
         setFiles((prev) => [errorFile, ...prev]);
       }
@@ -163,7 +166,7 @@ export default function ResumeUpload() {
         >
           <input
             type="file"
-            accept=".pdf,.docx"
+            accept=".png,.jpg,.jpeg,image/png,image/jpeg"
             multiple
             onChange={handleFileSelect}
             className="hidden"
@@ -175,10 +178,10 @@ export default function ResumeUpload() {
                 <Upload className="h-8 w-8 text-accent" />
               </div>
               <p className="text-lg font-medium text-foreground mb-1">
-                Drop resumes here or click to upload
+                Drop resume images here or click to upload
               </p>
               <p className="text-sm text-muted-foreground">
-                Supports PDF and DOCX files (max 10MB each)
+                Supports PNG and JPG images only (max 10MB each)
               </p>
             </div>
           </label>
@@ -273,7 +276,11 @@ export default function ResumeUpload() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate('/candidates')}
+                            >
                               <Eye className="h-4 w-4 mr-1" />
                               View Details
                             </Button>

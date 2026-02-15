@@ -1,7 +1,9 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
+
+// Initialize Firebase
+const { initializeFirebase } = require('./config/firebase.cjs');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -10,10 +12,14 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// database connection
-mongoose.connect(process.env.MONGO_URL)
-    .then(() => console.log('MongoDB connected'))
-    .catch(err => console.error(err));
+// Initialize Firebase connection
+try {
+    initializeFirebase();
+    console.log('Firebase Firestore connected');
+} catch (err) {
+    console.error('Firebase initialization error:', err.message);
+    console.error('Please configure Firebase credentials.');
+}
 
 // Routes
 const jobsRouter = require('./routes/jobs.cjs');
@@ -26,5 +32,14 @@ app.use('/api/candidates', candidatesRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/uploads', express.static('uploads')); // Serve uploaded files statically
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'OK', 
+        database: 'Firebase Firestore',
+        timestamp: new Date().toISOString()
+    });
+});
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
