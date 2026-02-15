@@ -1,4 +1,4 @@
 // Wrapper for Vercel serverless function
-const app = require('./index.cjs');
+const app = require('./app.cjs');
 
 module.exports = app;
