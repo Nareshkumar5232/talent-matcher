@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://talent-matcher-production.up.railway.app/api';
 
 // Convert Firestore timestamp to Date
 const convertTimestamp = (timestamp: any): Date | null => {
