@@ -8,13 +8,19 @@ const { initializeFirebase } = require('./config/firebase.cjs');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware - CORS configuration
-app.use(cors({
+// CORS configuration - must come first
+const corsOptions = {
     origin: ['https://talent-matcher-drab.vercel.app', 'http://localhost:8081', 'http://localhost:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
-}));
+};
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
+// JSON middleware
 app.use(express.json());
 
 // Initialize Firebase connection
